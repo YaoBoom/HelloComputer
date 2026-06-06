@@ -1,12 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
-const { db } = require('../models/database');
+const { readDB, writeDB } = require('../models/database');
 
 // 获取所有分类
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const categories = db.prepare('SELECT * FROM categories ORDER BY sort ASC, createdAt ASC').all();
+    const data = readDB();
+    const categories = data.categories
+      .sort((a, b) => a.sort - b.sort)
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     res.json({ success: true, data: categories });
   } catch (error) {
     console.error('获取分类失败:', error);
@@ -15,9 +18,10 @@ router.get('/', (req, res) => {
 });
 
 // 获取单个分类
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const category = db.prepare('SELECT * FROM categories WHERE id = ?').get(req.params.id);
+    const data = readDB();
+    const category = data.categories.find(c => c.id === req.params.id);
     if (!category) {
       return res.status(404).json({ success: false, message: '分类不存在' });
     }
@@ -29,15 +33,21 @@ router.get('/:id', (req, res) => {
 });
 
 // 创建分类
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { name, icon, sort } = req.body;
-    const id = uuidv4();
+    const category = {
+      id: uuidv4(),
+      name,
+      icon: icon || '',
+      sort: sort || 0,
+      createdAt: new Date().toISOString()
+    };
     
-    db.prepare('INSERT INTO categories (id, name, icon, sort) VALUES (?, ?, ?, ?)')
-      .run(id, name, icon || '', sort || 0);
+    const data = readDB();
+    data.categories.push(category);
+    writeDB(data);
     
-    const category = db.prepare('SELECT * FROM categories WHERE id = ?').get(id);
     res.status(201).json({ success: true, data: category });
   } catch (error) {
     console.error('创建分类失败:', error);
@@ -46,21 +56,26 @@ router.post('/', (req, res) => {
 });
 
 // 更新分类
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { name, icon, sort } = req.body;
     const { id } = req.params;
     
-    const existing = db.prepare('SELECT * FROM categories WHERE id = ?').get(id);
-    if (!existing) {
+    const data = readDB();
+    const index = data.categories.findIndex(c => c.id === id);
+    if (index === -1) {
       return res.status(404).json({ success: false, message: '分类不存在' });
     }
     
-    db.prepare('UPDATE categories SET name = ?, icon = ?, sort = ? WHERE id = ?')
-      .run(name, icon || '', sort ?? existing.sort, id);
+    data.categories[index] = {
+      ...data.categories[index],
+      name,
+      icon: icon || '',
+      sort: sort ?? data.categories[index].sort
+    };
+    writeDB(data);
     
-    const category = db.prepare('SELECT * FROM categories WHERE id = ?').get(id);
-    res.json({ success: true, data: category });
+    res.json({ success: true, data: data.categories[index] });
   } catch (error) {
     console.error('更新分类失败:', error);
     res.status(500).json({ success: false, message: '更新分类失败' });
@@ -68,16 +83,20 @@ router.put('/:id', (req, res) => {
 });
 
 // 删除分类
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    const existing = db.prepare('SELECT * FROM categories WHERE id = ?').get(id);
-    if (!existing) {
+    const data = readDB();
+    const index = data.categories.findIndex(c => c.id === id);
+    if (index === -1) {
       return res.status(404).json({ success: false, message: '分类不存在' });
     }
     
-    db.prepare('DELETE FROM categories WHERE id = ?').run(id);
+    data.categories.splice(index, 1);
+    data.products = data.products.filter(p => p.categoryId !== id);
+    writeDB(data);
+    
     res.json({ success: true, message: '删除成功' });
   } catch (error) {
     console.error('删除分类失败:', error);

@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const db = require('./models/database');
+const { initDatabase } = require('./models/database');
 
 // 引入路由
 const categoryRoutes = require('./routes/category');
@@ -31,14 +31,22 @@ app.use('/api/upload', uploadRoutes);
 
 // 健康检查
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: '服务器运行中' });
+  res.json({ success: true, message: '服务器运行中' });
 });
 
-// 初始化数据库
-db.initDatabase();
+// 初始化数据库并启动服务器
+async function startServer() {
+  try {
+    await initDatabase();
+    app.listen(PORT, () => {
+      console.log(`🚀 服务器运行在 http://localhost:${PORT}`);
+      console.log(`📁 图片访问地址: http://localhost:${PORT}/uploads`);
+      console.log(`🔗 健康检查: http://localhost:${PORT}/api/health`);
+    });
+  } catch (error) {
+    console.error('服务器启动失败:', error);
+    process.exit(1);
+  }
+}
 
-// 启动服务器
-app.listen(PORT, () => {
-  console.log(`🚀 服务器运行在 http://localhost:${PORT}`);
-  console.log(`📁 图片访问地址: http://localhost:${PORT}/uploads`);
-});
+startServer();
