@@ -24,9 +24,15 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+.env.production
 
 # Testing
 coverage/
 
 # Misc
 *.local
+
+# Server
+server/data.db
+server/uploads/
+server/node_modules/
