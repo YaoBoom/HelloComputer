@@ -1,30 +1,32 @@
-﻿# OS files
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# Editor files
-*.swp
-*.swo
-*~
-.vscode/
-.idea/
-
-# Temp files
-*.tmp
-*.log
-
 # Dependencies
 node_modules/
 
 # Build output
 dist/
+dist-ssr/
 
-# Env
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
 .env
 .env.local
 .env.*.local
 
-# IDE
-.trae/
-*.tsbuildinfo
+# Testing
+coverage/
+
+# Misc
+*.local
